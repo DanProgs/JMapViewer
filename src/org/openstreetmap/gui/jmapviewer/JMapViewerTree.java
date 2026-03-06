@@ -127,7 +127,7 @@ public class JMapViewerTree extends JPanel {
 		if (layer.isVisibleTexts() == null) {
 			popup.add(menuItemShow);
 			popup.add(menuItemHide);
-		} else if (layer.isVisibleTexts()) {
+		} else if (Boolean.TRUE.equals(layer.isVisibleTexts())) {
 			popup.add(menuItemHide);
 		} else {
 			popup.add(menuItemShow);
