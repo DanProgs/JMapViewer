@@ -13,60 +13,57 @@ import org.openstreetmap.gui.jmapviewer.interfaces.IProjected;
  * Projected coordinates represented by an encapsulates a Point2D.Double value.
  */
 public class Projected implements IProjected {
-    private transient Point2D.Double data;
+	private Point2D.Double data;
 
-    /**
-     * Constructs a new {@code Projected}.
-     * @param east easting
-     * @param north northing
-     */
-    public Projected(double east, double north) {
-        data = new Point2D.Double(east, north);
-    }
+	/**
+	 * Constructs a new {@code Projected}.
+	 *
+	 * @param east  easting
+	 * @param north northing
+	 */
+	public Projected(double east, double north) {
+		data = new Point2D.Double(east, north);
+	}
 
-    @Override
-    public double getEast() {
-        return data.x;
-    }
+	@Override
+	public boolean equals(Object obj) {
+		if ((obj == null) || (getClass() != obj.getClass())) {
+			return false;
+		}
+		final Projected other = (Projected) obj;
+		return Objects.equals(this.data, other.data);
+	}
 
-    @Override
-    public double getNorth() {
-        return data.y;
-    }
+	@Override
+	public double getEast() {
+		return data.x;
+	}
 
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        out.writeObject(data.x);
-        out.writeObject(data.y);
-    }
+	@Override
+	public double getNorth() {
+		return data.y;
+	}
 
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        data = new Point2D.Double();
-        data.x = (Double) in.readObject();
-        data.y = (Double) in.readObject();
-    }
+	@Override
+	public int hashCode() {
+		int hash = 3;
+		hash = 61 * hash + Objects.hashCode(this.data);
+		return hash;
+	}
 
-    @Override
-    public String toString() {
-        return "Projected[" + data.y + ", " + data.x + ']';
-    }
+	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+		data = new Point2D.Double();
+		data.x = (Double) in.readObject();
+		data.y = (Double) in.readObject();
+	}
 
-    @Override
-    public int hashCode() {
-        int hash = 3;
-        hash = 61 * hash + Objects.hashCode(this.data);
-        return hash;
-    }
+	@Override
+	public String toString() {
+		return "Projected[" + data.y + ", " + data.x + ']';
+	}
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final Projected other = (Projected) obj;
-        return Objects.equals(this.data, other.data);
-    }
+	private void writeObject(ObjectOutputStream out) throws IOException {
+		out.writeObject(data.x);
+		out.writeObject(data.y);
+	}
 }
-
