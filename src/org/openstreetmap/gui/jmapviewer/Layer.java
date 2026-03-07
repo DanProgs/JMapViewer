@@ -1,23 +1,26 @@
 // License: GPL. For details, see Readme.txt file.
 package org.openstreetmap.gui.jmapviewer;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.openstreetmap.gui.jmapviewer.interfaces.MapObject;
 
 public class Layer extends AbstractLayer {
-    private List<MapObject> elements;
+	
+	private List<MapObject> elements = new ArrayList<>();
 
     public Layer(String name) {
-        super(name);
+        this(name, null, null);
     }
 
     public Layer(String name, String description) {
-        super(name, description);
+        this(name, description, null);
     }
 
     public Layer(String name, Style style) {
-        super(name, style);
+        this(name, null, style);
     }
 
     public Layer(String name, String description, Style style) {
@@ -25,11 +28,11 @@ public class Layer extends AbstractLayer {
     }
 
     public Layer(LayerGroup parent, String name) {
-        super(parent, name);
+        this(parent, name, null, null);
     }
 
     public Layer(LayerGroup parent, String name, Style style) {
-        super(parent, name, style);
+        this(parent, name, null, style);
     }
 
     public Layer(LayerGroup parent, String name, String description, Style style) {
@@ -37,7 +40,7 @@ public class Layer extends AbstractLayer {
     }
 
     public List<MapObject> getElements() {
-        return elements;
+        return Collections.unmodifiableList(elements);
     }
 
     public void setElements(List<MapObject> elements) {
