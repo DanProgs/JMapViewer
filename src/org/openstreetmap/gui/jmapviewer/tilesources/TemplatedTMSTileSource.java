@@ -100,11 +100,11 @@ public class TemplatedTMSTileSource extends TMSTileSource implements TemplatedTi
             }
         }
         String r = this.baseUrl
-            .replaceAll(PATTERN_ZOOM, Integer.toString(finalZoom))
-            .replaceAll(PATTERN_X, Integer.toString(tilex))
-            .replaceAll(PATTERN_Y, Integer.toString(tiley))
-            .replaceAll(PATTERN_Y_YAHOO, Integer.toString((int) Math.pow(2, zoom-1)-1-tiley))
-            .replaceAll(PATTERN_NEG_Y, Integer.toString((int) Math.pow(2, zoom)-1-tiley));
+            .replace(PATTERN_ZOOM, Integer.toString(finalZoom))
+            .replace(PATTERN_X, Integer.toString(tilex))
+            .replace(PATTERN_Y, Integer.toString(tiley))
+            .replace(PATTERN_Y_YAHOO, Integer.toString((int) Math.pow(2, zoom-1)-1-tiley))
+            .replace(PATTERN_NEG_Y, Integer.toString((int) Math.pow(2, zoom)-1-tiley));
         if (rand != null) {
             r = r.replaceAll(PATTERN_SWITCH, randomParts[rand.nextInt(randomParts.length)]);
         }
