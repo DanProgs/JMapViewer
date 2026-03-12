@@ -3,107 +3,170 @@ package org.openstreetmap.gui.jmapviewer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AbstractLayer {
-    private LayerGroup parent;
-    private String name;
-    private String description;
-    private Style style;
-    private Boolean visible;
-    private Boolean visibleTexts = Boolean.TRUE;
 
-    public AbstractLayer(String name) {
-        this(name, (String) null);
-    }
+	/**
+	 * Interface definition for receiving layer state change events.
+	 */
+	public interface LayerChangeListener {
+		/**
+		 * Invoked when the target layer has changed its properties.
+		 *
+		 * @param layer the layer that was modified
+		 */
+		void layerChanged(AbstractLayer layer);
+	}
 
-    public AbstractLayer(String name, String description) {
-        this(name, description, MapMarkerCircle.getDefaultStyle());
-    }
+	public static <E> List<E> add(List<E> list, E element) {
+		if (element != null) {
+			if (list == null) {
+				list = new ArrayList<>();
+			}
+			if (!list.contains(element)) {
+				list.add(element);
+			}
+		}
+		return list;
+	}
 
-    public AbstractLayer(String name, Style style) {
-        this(name, null, style);
-    }
+	private String description;
+	/**
+	 * Thread-safe list of listeners to avoid ConcurrentModificationException during
+	 * event broadcasting.
+	 */
+	private final java.util.List<LayerChangeListener> listeners = new CopyOnWriteArrayList<>();
+	private String name;
+	private LayerGroup parent;
+	private Style style;
 
-    public AbstractLayer(String name, String description, Style style) {
-        this(null, name, description, style);
-    }
+	private Boolean visible = Boolean.TRUE;
 
-    public AbstractLayer(LayerGroup parent, String name) {
-        this(parent, name, MapMarkerCircle.getDefaultStyle());
-    }
+	private Boolean visibleTexts = Boolean.TRUE;
 
-    public AbstractLayer(LayerGroup parent, String name, Style style) {
-        this(parent, name, null, style);
-    }
+	public AbstractLayer(LayerGroup parent, String name) {
+		this(parent, name, MapMarkerCircle.getDefaultStyle());
+	}
 
-    public AbstractLayer(LayerGroup parent, String name, String description, Style style) {
-        setParent(parent);
-        setName(name);
-        setDescription(description);
-        setStyle(style);
-        setVisible(Boolean.TRUE);
+	public AbstractLayer(LayerGroup parent, String name, String description, Style style) {
+		setParent(parent);
+		setName(name);
+		setDescription(description);
+		setStyle(style);
+		setVisible(Boolean.TRUE);
 
-        if (parent != null) parent.add(this);
-    }
+		if (parent != null) {
+			parent.addLayer(this);
+		}
+	}
 
-    public LayerGroup getParent() {
-        return parent;
-    }
+	public AbstractLayer(LayerGroup parent, String name, Style style) {
+		this(parent, name, null, style);
+	}
 
-    public void setParent(LayerGroup parent) {
-        this.parent = parent;
-    }
+	public AbstractLayer(String name) {
+		this.name = name;
+	}
 
-    public String getName() {
-        return name;
-    }
+	public AbstractLayer(String name, String description) {
+		this(name, description, MapMarkerCircle.getDefaultStyle());
+	}
 
-    public void setName(String name) {
-        this.name = name;
-    }
+	public AbstractLayer(String name, String description, Style style) {
+		this(null, name, description, style);
+	}
 
-    public String getDescription() {
-        return description;
-    }
+	public AbstractLayer(String name, Style style) {
+		this(name, null, style);
+	}
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+	/**
+	 * Adds a listener that will be notified whenever the layer's state changes
+	 * (e.g., visibility, name, or description).
+	 *
+	 * @param listener the listener to add
+	 */
+	public void addChangeListener(LayerChangeListener listener) {
+		if (listener != null) {
+			listeners.add(listener);
+		}
+	}
 
-    public Style getStyle() {
-        return style;
-    }
+	/**
+	 * Notifies all registered listeners about a state change in this layer. This
+	 * triggers UI updates in the tree and a repaint on the map.
+	 */
+	protected void fireChangeEvent() {
+		for (LayerChangeListener l : listeners) {
+			l.layerChanged(this);
+		}
+	}
 
-    public void setStyle(Style style) {
-        this.style = style;
-    }
+	public String getDescription() {
+		return description;
+	}
 
-    public Boolean isVisible() {
-        return visible;
-    }
+	public String getName() {
+		return name;
+	}
 
-    public void setVisible(Boolean visible) {
-        this.visible = visible;
-    }
+	public LayerGroup getParent() {
+		return parent;
+	}
 
-    public static <E> List<E> add(List<E> list, E element) {
-        if (element != null) {
-            if (list == null) list = new ArrayList<>();
-            if (!list.contains(element)) list.add(element);
-        }
-        return list;
-    }
+	public Style getStyle() {
+		return style;
+	}
 
-    public Boolean isVisibleTexts() {
-        return visibleTexts;
-    }
+	public Boolean isVisible() {
+		return visible;
+	}
 
-    public void setVisibleTexts(Boolean visibleTexts) {
-        this.visibleTexts = visibleTexts;
-    }
+	public Boolean isVisibleTexts() {
+		return visibleTexts;
+	}
 
-    @Override
-    public String toString() {
-        return name;
-    }
+	/**
+	 * Removes a previously registered change listener.
+	 *
+	 * @param listener the listener to remove
+	 */
+	public void removeChangeListener(LayerChangeListener listener) {
+		listeners.remove(listener);
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public void setParent(LayerGroup parent) {
+		this.parent = parent;
+	}
+
+	public void setStyle(Style style) {
+		this.style = style;
+	}
+
+	public void setVisibleTexts(Boolean visibleTexts) {
+		this.visibleTexts = visibleTexts;
+		fireChangeEvent();
+	}
+
+	@Override
+	public String toString() {
+		return name;
+	}
+
+	public void setVisible(boolean visible) {
+		if (Boolean.TRUE.equals(this.visible) != visible) {
+			this.visible = visible;
+			fireChangeEvent();
+		}
+		
+	}
 }

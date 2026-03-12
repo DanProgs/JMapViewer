@@ -44,11 +44,6 @@ import org.openstreetmap.gui.jmapviewer.tilesources.OsmTileSource;
 public class JMapViewer extends JPanel implements TileLoaderListener {
 
 	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-
-	/**
 	 * Apparence of zoom controls.
 	 */
 	public enum ZOOM_BUTTON_STYLE {
@@ -66,10 +61,15 @@ public class JMapViewer extends JPanel implements TileLoaderListener {
 
 	/** Minimum zoom level */
 	public static final int MIN_ZOOM = 0;
+
 	/**
 	 * Vectors for clock-wise tile painting
 	 */
 	private static final Point[] move = { new Point(1, 0), new Point(0, 1), new Point(-1, 0), new Point(0, -1) };
+	/**
+	 *
+	 */
+	private static final long serialVersionUID = 1L;
 
 	/** option to reverse zoom direction with mouse wheel */
 	public static boolean zoomReverseWheel;
@@ -616,6 +616,7 @@ public class JMapViewer extends JPanel implements TileLoaderListener {
 			} else {
 				iMove = 0;
 			}
+			
 		} // calculate the visibility borders
 		int xMin = -tilesize;
 		int yMin = -tilesize;
@@ -625,43 +626,50 @@ public class JMapViewer extends JPanel implements TileLoaderListener {
 		// calculate the length of the grid (number of squares per edge)
 		int gridLength = 1 << zoom;
 
-		// paint the tiles in a spiral, starting from center of the map
-		boolean painted = true;
-		int x = 0;
-		while (painted) {
-			painted = false;
-			for (int i = 0; i < 4; i++) {
-				if (i % 2 == 0) {
-					x++;
-				}
-				for (int j = 0; j < x; j++) {
-					if (xMin <= posx && posx <= xMax && yMin <= posy && posy <= yMax) {
-						// tile is visible
-						Tile tile;
-						if (scrollWrapEnabled) {
-							// in case tilex is out of bounds, grab the tile to use for wrapping
-							int tilexWrap = ((tilex % gridLength) + gridLength) % gridLength;
-							tile = tileController.getTile(tilexWrap, tiley, zoom);
-						} else {
-							tile = tileController.getTile(tilex, tiley, zoom);
-						}
-						if (tile != null) {
-							tile.paint(g2, posx, posy, tilesize, tilesize);
-							if (tileGridVisible) {
-								g2.drawRect(posx, posy, tilesize, tilesize);
-							}
-						}
-						painted = true;
+		renderTilesSpiraly(g2, iMove, tilesize, tilex, tiley, posx, posy, xMin, yMin, xMax, yMax, gridLength);
+		
+		renderOuterMapBorder(g2, tilesize, w2, h2);
+
+		renderCoordinateGrid(g2);
+
+		renderMapMarkers(g2);
+
+		renderLabels(g2);
+		
+		// reset graphics context
+		g2.setTransform(defaultTransform);
+	}
+
+	private void renderLabels(Graphics2D g2) {
+		attribution.paintAttribution(g2, getWidth(), getHeight(), getPosition(0, 0),
+				getPosition(getWidth(), getHeight()), zoom, this);
+	}
+
+	private void renderMapMarkers(Graphics2D g2) {
+		if (mapMarkersVisible && mapMarkerList != null) {
+			synchronized (this) {
+				for (MapMarker marker : mapMarkerList) {
+					if (marker.isVisible()) {
+						paintMarker(g2, marker);
 					}
-					Point p = move[iMove];
-					posx += p.x * tilesize;
-					posy += p.y * tilesize;
-					tilex += p.x;
-					tiley += p.y;
 				}
-				iMove = (iMove + 1) % move.length;
 			}
 		}
+	}
+
+	private void renderCoordinateGrid(Graphics2D g2) {
+		if (mapRectanglesVisible && mapRectangleList != null) {
+			synchronized (this) {
+				for (MapRectangle rectangle : mapRectangleList) {
+					if (rectangle.isVisible()) {
+						paintRectangle(g2, rectangle);
+					}
+				}
+			}
+		}
+	}
+
+	private void renderOuterMapBorder(Graphics2D g2, int tilesize, int w2, int h2) {
 		// outer border of the map
 		int mapSize = tilesize << zoom;
 		if (scrollWrapEnabled) {
@@ -687,31 +695,6 @@ public class JMapViewer extends JPanel implements TileLoaderListener {
 				}
 			}
 		}
-
-		if (mapRectanglesVisible && mapRectangleList != null) {
-			synchronized (this) {
-				for (MapRectangle rectangle : mapRectangleList) {
-					if (rectangle.isVisible()) {
-						paintRectangle(g2, rectangle);
-					}
-				}
-			}
-		}
-
-		if (mapMarkersVisible && mapMarkerList != null) {
-			synchronized (this) {
-				for (MapMarker marker : mapMarkerList) {
-					if (marker.isVisible()) {
-						paintMarker(g2, marker);
-					}
-				}
-			}
-		}
-
-		attribution.paintAttribution(g2, getWidth(), getHeight(), getPosition(0, 0),
-				getPosition(getWidth(), getHeight()), zoom, this);
-		// reset graphics context
-		g2.setTransform(defaultTransform);
 	}
 
 	/**
@@ -899,6 +882,54 @@ public class JMapViewer extends JPanel implements TileLoaderListener {
 		repaint();
 	}
 
+	private void renderTilesSpiraly(Graphics2D g2, int iMove, int tilesize, int tilex, int tiley, int posx, int posy,
+			int xMin, int yMin, int xMax, int yMax, int gridLength) {
+		int gridLen = gridLength;
+		boolean painted = true;
+		int x = 0;
+		while (painted) {
+			painted = false;
+			for (int i = 0; i < 4; i++) {
+				if (i % 2 == 0) {
+					x++;
+				}
+
+				for (int j = 0; j < x; j++) {
+					if (posx >= xMin && posx <= xMax && posy >= yMin && posy <= yMax) {
+
+						int lookupX = tilex;
+						if (scrollWrapEnabled) {
+							lookupX = (tilex % gridLen + gridLen) % gridLen;
+						}
+
+						painted = renderTiles(g2, tilesize, tiley, posx, posy, painted, lookupX);
+					}
+
+					// State-Update
+					Point p = move[iMove];
+					posx += p.x * tilesize;
+					posy += p.y * tilesize;
+					tilex += p.x;
+					tiley += p.y;
+				}
+				iMove = (iMove + 1) % 4; // move.length ist fix 4 bei Spiralen
+			}
+		}
+	}
+
+	private boolean renderTiles(Graphics2D g2, int tilesize, int tiley, int posx, int posy, boolean painted,
+			int lookupX) {
+		Tile tile = tileController.getTile(lookupX, tiley, zoom);
+		if (tile != null) {
+			tile.paint(g2, posx, posy, tilesize, tilesize);
+			if (tileGridVisible) {
+				g2.drawRect(posx, posy, tilesize, tilesize);
+			}
+			painted = true;
+		}
+		return painted;
+	}
+
 	/**
 	 * @param center the center to set
 	 */
@@ -1059,7 +1090,7 @@ public class JMapViewer extends JPanel implements TileLoaderListener {
 		while (x > width || y > height) {
 			newZoom--;
 			x >>= 1;
-			y >>= 1;
+					y >>= 1;
 		}
 		x = xMin + (xMax - xMin) / 2;
 		y = yMin + (yMax - yMin) / 2;

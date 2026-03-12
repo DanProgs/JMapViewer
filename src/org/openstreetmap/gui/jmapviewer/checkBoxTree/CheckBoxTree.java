@@ -202,7 +202,7 @@ public class CheckBoxTree extends JTree {
 		if (layer != null) {
 			DefaultMutableTreeNode parent;
 			if (layer.getParent() == null) {
-				rootLayer().add(layer);
+				rootLayer().addLayer(layer);
 				parent = rootNode();
 			} else {
 				parent = searchNode(layer.getParent());

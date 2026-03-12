@@ -1,56 +1,70 @@
-// License: GPL. For details, see Readme.txt file.
 package org.openstreetmap.gui.jmapviewer.interfaces;
 
-import org.openstreetmap.gui.jmapviewer.JMapViewer;
 import org.openstreetmap.gui.jmapviewer.Tile;
 
 /**
- * Implement this interface for creating your custom tile cache for
- * {@link JMapViewer}.
+ * Interface for custom tile cache implementations used by JMapViewer.
+ * Defines methods for tile lifecycle management, including storage, retrieval,
+ * and capacity control.
  *
  * @author Jan Peter Stotz
  */
 public interface TileCache {
 
     /**
-     * Retrieves a tile from the cache if present, otherwise <code>null</code>
-     * will be returned.
+     * Adds a tile to the cache. The retention period depends on the 
+     * implementation's eviction policy (e.g., Least Recently Used).
      *
-     * @param source
-     *            the tile source
-     * @param x
-     *            tile number on the x axis of the tile to be retrieved
-     * @param y
-     *            tile number on the y axis of the tile to be retrieved
-     * @param z
-     *            zoom level of the tile to be retrieved
-     * @return the requested tile or <code>null</code> if the tile is not
-     *         present in the cache
-     */
-    Tile getTile(TileSource source, int x, int y, int z);
-
-    /**
-     * Adds a tile to the cache. How long after adding a tile can be retrieved
-     * via {@link #getTile(TileSource, int, int, int)} is unspecified and depends on the
-     * implementation.
-     *
-     * @param tile the tile to be added
+     * @param tile the {@link Tile} object to be stored
      */
     void addTile(Tile tile);
 
     /**
-     * @return the number of tiles hold by the cache
-     */
-    int getTileCount();
-
-    /**
-     * Clears the cache deleting all tiles from memory.
+     * Clears all tiles from the cache, resetting it to an empty state.
      */
     void clear();
 
     /**
-     * Size of the cache.
-     * @return maximum number of tiles in cache
+     * Returns the maximum number of tiles the cache is configured to hold.
+     *
+     * @return the maximum cache capacity
      */
     int getCacheSize();
+
+    /**
+     * Retrieves a tile from the cache. Typically updates the tile's LRU status.
+     *
+     * @param source the source of the tile
+     * @param x      the x-coordinate (column)
+     * @param y      the y-coordinate (row)
+     * @param z      the zoom level
+     * @return the requested {@link Tile}, or {@code null} if not found
+     */
+    Tile getTile(TileSource source, int x, int y, int z);
+
+    /**
+     * Returns the number of tiles currently residing in the cache.
+     *
+     * @return the current number of cached tiles
+     */
+    int getTileCount();
+
+    /**
+     * Checks if a tile is present and loaded without triggering side effects.
+     * This is a "peek" operation for efficient rendering decisions.
+     *
+     * @param source the source of the tile
+     * @param x      the x-coordinate
+     * @param y      the y-coordinate
+     * @param zoom   the zoom level
+     * @return {@code true} if the tile is cached, loaded, and error-free
+     */
+    boolean isLoaded(TileSource source, int x, int y, int zoom);
+
+    /**
+     * Updates the maximum capacity and triggers eviction if necessary.
+     *
+     * @param cacheSize the new maximum number of tiles
+     */
+    void setCacheSize(int cacheSize);
 }

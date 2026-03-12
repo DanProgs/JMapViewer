@@ -1,12 +1,8 @@
-// License: GPL. For details, see Readme.txt file.
 package org.openstreetmap.gui.jmapviewer;
 
 import java.awt.BorderLayout;
-import java.awt.Cursor;
+import java.awt.FlowLayout;
 import java.awt.Frame;
-import java.awt.Point;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -18,200 +14,102 @@ import javax.swing.WindowConstants;
 
 import org.openstreetmap.gui.jmapviewer.events.JMVCommandEvent;
 import org.openstreetmap.gui.jmapviewer.interfaces.JMapViewerEventListener;
-import org.openstreetmap.gui.jmapviewer.interfaces.MapPolygon;
-import org.openstreetmap.gui.jmapviewer.interfaces.TileLoader;
 import org.openstreetmap.gui.jmapviewer.interfaces.TileSource;
 import org.openstreetmap.gui.jmapviewer.tilesources.BingAerialTileSource;
 import org.openstreetmap.gui.jmapviewer.tilesources.BingTileSource;
 import org.openstreetmap.gui.jmapviewer.tilesources.OsmTileSource;
 
-/**
- * Demonstrates the usage of {@link JMapViewer}
- *
- * @author Jan Peter Stotz
- *
- */
 public class Demo extends JFrame implements JMapViewerEventListener {
+    private static final long serialVersionUID = 1L;
+    final JMapViewerTree treeMap;
+    private final JLabel mperpLabelValue;
+    private final JLabel zoomValue;
 
-	private static final long serialVersionUID = 1L;
+    public static void main(String[] args) {
+        new Demo().setVisible(true);
+    }
 
-	private static Coordinate c(double lat, double lon) {
-		return new Coordinate(lat, lon);
-	}
+    public Demo() {
+        super("JMapViewer Demo - Optimized Layers");
+        setSize(1200, 800);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        setExtendedState(Frame.MAXIMIZED_BOTH);
 
-	/**
-	 * @param args Main program arguments
-	 */
-	public static void main(String[] args) {
-		new Demo().setVisible(true);
-	}
-	private final JLabel mperpLabelName;
+        treeMap = new JMapViewerTree("Map Layers", true);
+        map().addJMVListener(this);
 
-	private final JLabel mperpLabelValue;
-	private final JMapViewerTree treeMap;
+        setLayout(new BorderLayout());
 
-	private final JLabel zoomLabel;
+        // Top Info Panel
+        JPanel panelTop = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        mperpLabelValue = new JLabel();
+        zoomValue = new JLabel();
+        updateInfo();
 
-	private final JLabel zoomValue;
+        JComboBox<TileSource> tileSelector = new JComboBox<>(new TileSource[] { 
+            new OsmTileSource.Mapnik(), new BingTileSource(), new BingAerialTileSource() 
+        });
+        tileSelector.addItemListener(e -> map().setTileSource((TileSource) e.getItem()));
 
-	/**
-	 * Constructs the {@code Demo}.
-	 */
-	public Demo() {
-		super("JMapViewer Demo");
-		setSize(400, 400);
+        panelTop.add(new JLabel("Source: ")); panelTop.add(tileSelector);
+        panelTop.add(new JLabel("  Zoom: ")); panelTop.add(zoomValue);
+        panelTop.add(new JLabel("  M/Px: ")); panelTop.add(mperpLabelValue);
 
-		treeMap = new JMapViewerTree("Zones");
+        // Bottom Controls
+        JPanel panelBottom = new JPanel();
+        JCheckBox showTree = new JCheckBox("Show Tree", true);
+        showTree.addActionListener(e -> treeMap.setTreeVisible(showTree.isSelected()));
+        
+        JButton fitMarkers = new JButton("Fit Markers");
+        fitMarkers.addActionListener(e -> map().setDisplayToFitMapMarkers());
 
-		// Listen to the map viewer for user operations so components will
-		// receive events and update
-		map().addJMVListener(this);
+        panelBottom.add(showTree);
+        panelBottom.add(fitMarkers);
 
-		setLayout(new BorderLayout());
-		setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-		setExtendedState(Frame.MAXIMIZED_BOTH);
-		JPanel panel = new JPanel(new BorderLayout());
-		JPanel panelTop = new JPanel();
-		JPanel panelBottom = new JPanel();
-		JPanel helpPanel = new JPanel();
+        add(panelTop, BorderLayout.NORTH);
+        add(treeMap, BorderLayout.CENTER);
+        add(panelBottom, BorderLayout.SOUTH);
 
-		mperpLabelName = new JLabel("Meters/Pixels: ");
-		mperpLabelValue = new JLabel(String.format("%s", map().getMeterPerPixel()));
+        initLayersAndMarkers();
+        map().setDisplayPosition(new Coordinate(51.16, 10.45), 6);
+    }
 
-		zoomLabel = new JLabel("Zoom: ");
-		zoomValue = new JLabel(String.format("%s", map().getZoom()));
+    private void initLayersAndMarkers() {
+        // Germany Group
+        LayerGroup germany = new LayerGroup("Germany");
+        Layer berlin = treeMap.addLayer(germany, "Berlin");
+        Layer munich = treeMap.addLayer(germany, "Munich");
+        map().addMapMarker(new MapMarkerDot(berlin, "Berlin", 52.52, 13.40));
+        map().addMapMarker(new MapMarkerDot(munich, "Munich", 48.13, 11.57));
 
-		add(panel, BorderLayout.NORTH);
-		add(helpPanel, BorderLayout.SOUTH);
-		panel.add(panelTop, BorderLayout.NORTH);
-		panel.add(panelBottom, BorderLayout.SOUTH);
-		JLabel helpLabel = new JLabel(
-				"Use left mouse button to move,\n " + "left double click or mouse wheel to zoom.");
-		helpPanel.add(helpLabel);
-		JButton button = new JButton("setDisplayToFitMapMarkers");
-		button.addActionListener(e -> map().setDisplayToFitMapMarkers());
-		JComboBox<TileSource> tileSourceSelector = new JComboBox<>(new TileSource[] { new OsmTileSource.Mapnik(),
-				new OsmTileSource.CycleMap(), new OsmTileSource.TransportMap(), new OsmTileSource.LandscapeMap(),
-				new OsmTileSource.OutdoorsMap(), new BingTileSource(), new BingAerialTileSource() });
-		tileSourceSelector.addItemListener(e -> map().setTileSource((TileSource) e.getItem()));
-		JComboBox<TileLoader> tileLoaderSelector;
-		tileLoaderSelector = new JComboBox<>(new TileLoader[] { new OsmTileLoader(map()) });
-		tileLoaderSelector.addItemListener(e -> map().setTileLoader((TileLoader) e.getItem()));
-		map().setTileLoader((TileLoader) tileLoaderSelector.getSelectedItem());
-		panelTop.add(tileSourceSelector);
-		panelTop.add(tileLoaderSelector);
-		final JCheckBox showMapMarker = new JCheckBox("Map markers visible");
-		showMapMarker.setSelected(map().getMapMarkersVisible());
-		showMapMarker.addActionListener(e -> map().setMapMarkerVisible(showMapMarker.isSelected()));
-		panelBottom.add(showMapMarker);
-		///
-		final JCheckBox showTreeLayers = new JCheckBox("Tree Layers visible");
-		showTreeLayers.addActionListener(e -> treeMap.setTreeVisible(showTreeLayers.isSelected()));
-		panelBottom.add(showTreeLayers);
-		///
-		final JCheckBox showToolTip = new JCheckBox("ToolTip visible");
-		showToolTip.addActionListener(e -> map().setToolTipText(null));
-		panelBottom.add(showToolTip);
-		///
-		final JCheckBox showTileGrid = new JCheckBox("Tile grid visible");
-		showTileGrid.setSelected(map().isTileGridVisible());
-		showTileGrid.addActionListener(e -> map().setTileGridVisible(showTileGrid.isSelected()));
-		panelBottom.add(showTileGrid);
-		final JCheckBox showZoomControls = new JCheckBox("Show zoom controls");
-		showZoomControls.setSelected(map().getZoomControlsVisible());
-		showZoomControls.addActionListener(e -> map().setZoomContolsVisible(showZoomControls.isSelected()));
-		panelBottom.add(showZoomControls);
-		final JCheckBox scrollWrapEnabled = new JCheckBox("Scrollwrap enabled");
-		scrollWrapEnabled.addActionListener(e -> map().setScrollWrapEnabled(scrollWrapEnabled.isSelected()));
-		panelBottom.add(scrollWrapEnabled);
-		panelBottom.add(button);
+        // Standalone Layer
+        Layer france = new Layer("France");
+        treeMap.addLayer(france);
+        map().addMapMarker(new MapMarkerDot(france, "Paris", 48.85, 2.35));
 
-		panelTop.add(zoomLabel);
-		panelTop.add(zoomValue);
-		panelTop.add(mperpLabelName);
-		panelTop.add(mperpLabelValue);
+        // Hidden Layer Example
+        Layer spain = new Layer("Spain");
+        treeMap.addLayer(spain);
+        spain.setVisible(false);
+        map().addMapMarker(new MapMarkerDot(spain, "Madrid", 40.41, -3.70));
+        
+        for (int i = 0; i < treeMap.getTree().getRowCount(); i++) {
+            treeMap.getTree().expandRow(i);
+        }
+    }
 
-		add(treeMap, BorderLayout.CENTER);
+    private void updateInfo() {
+        zoomValue.setText(String.valueOf(map().getZoom()));
+        mperpLabelValue.setText(String.format("%.2f", map().getMeterPerPixel()));
+    }
 
-		//
-		LayerGroup germanyGroup = new LayerGroup("Germany");
-		Layer germanyWestLayer = germanyGroup.addLayer("Germany West");
-		Layer germanyEastLayer = germanyGroup.addLayer("Germany East");
-		MapMarkerDot eberstadt = new MapMarkerDot(germanyEastLayer, "Eberstadt", 49.814284999, 8.642065999);
-		MapMarkerDot ebersheim = new MapMarkerDot(germanyWestLayer, "Ebersheim", 49.91, 8.24);
-		MapMarkerDot empty = new MapMarkerDot(germanyEastLayer, 49.71, 8.64);
-		MapMarkerDot darmstadt = new MapMarkerDot(germanyEastLayer, "Darmstadt", 49.8588, 8.643);
-		map().addMapMarker(eberstadt);
-		map().addMapMarker(ebersheim);
-		map().addMapMarker(empty);
-		Layer franceLayer = treeMap.addLayer("France");
-		map().addMapMarker(new MapMarkerDot(franceLayer, "La Gallerie", 48.71, -1));
-		map().addMapMarker(new MapMarkerDot(43.604, 1.444));
-		map().addMapMarker(new MapMarkerCircle(53.343, -6.267, 0.666));
-		map().addMapRectangle(new MapRectangleImpl(new Coordinate(53.343, -6.267), new Coordinate(43.604, 1.444)));
-		map().addMapMarker(darmstadt);
-		treeMap.addLayer(germanyWestLayer);
-		treeMap.addLayer(germanyEastLayer);
+    private JMapViewer map() { return treeMap.getViewer(); }
 
-		MapPolygon bermudas = new MapPolygonImpl(c(49, 1), c(45, 10), c(40, 5));
-		map().addMapPolygon(bermudas);
-		map().addMapPolygon(new MapPolygonImpl(germanyEastLayer, "Riedstadt", ebersheim, darmstadt, eberstadt, empty));
-
-		map().addMapMarker(new MapMarkerCircle(germanyWestLayer, "North of Suisse", new Coordinate(48, 7), .5));
-		Layer spain = treeMap.addLayer("Spain");
-		map().addMapMarker(new MapMarkerCircle(spain, "La Garena", new Coordinate(40.4838, -3.39), .002));
-		spain.setVisible(Boolean.FALSE);
-
-		Layer wales = treeMap.addLayer("UK");
-		map().addMapRectangle(new MapRectangleImpl(wales, "Wales", c(53.35, -4.57), c(51.64, -2.63)));
-
-		// map.setDisplayPosition(new Coordinate(49.807, 8.6), 11);
-		// map.setTileGridVisible(true);
-
-		map().addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				if (e.getButton() == MouseEvent.BUTTON1) {
-					map().getAttribution().handleAttribution(e.getPoint(), true);
-				}
-			}
-		});
-
-		map().addMouseMotionListener(new MouseAdapter() {
-			@Override
-			public void mouseMoved(MouseEvent e) {
-				Point p = e.getPoint();
-				boolean cursorHand = map().getAttribution().handleAttributionCursor(p);
-				if (cursorHand) {
-					map().setCursor(new Cursor(Cursor.HAND_CURSOR));
-				} else {
-					map().setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
-				}
-				if (showToolTip.isSelected()) {
-					map().setToolTipText(map().getPosition(p).toString());
-				}
-			}
-		});
-	}
-
-	private JMapViewer map() {
-		return treeMap.getViewer();
-	}
-
-	@Override
-	public void processCommand(JMVCommandEvent command) {
-		if (command.getCommand().equals(JMVCommandEvent.COMMAND.ZOOM)
-				|| command.getCommand().equals(JMVCommandEvent.COMMAND.MOVE)) {
-			updateZoomParameters();
-		}
-	}
-
-	private void updateZoomParameters() {
-		if (mperpLabelValue != null) {
-			mperpLabelValue.setText(String.format("%s", map().getMeterPerPixel()));
-		}
-		if (zoomValue != null) {
-			zoomValue.setText(String.format("%s", map().getZoom()));
-		}
-	}
+    @Override
+    public void processCommand(JMVCommandEvent command) {
+        if (command.getCommand() == JMVCommandEvent.COMMAND.ZOOM || 
+            command.getCommand() == JMVCommandEvent.COMMAND.MOVE) {
+            updateInfo();
+        }
+    }
 }

@@ -14,6 +14,7 @@ import java.awt.font.TextAttribute;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.ImageObserver;
 import java.util.HashMap;
+import java.util.stream.Stream;
 
 import org.openstreetmap.gui.jmapviewer.interfaces.Attributed;
 import org.openstreetmap.gui.jmapviewer.interfaces.ICoordinate;
@@ -38,48 +39,35 @@ public class AttributionSupport {
 
 	private Attributed source;
 
-	public boolean handleAttribution(Point p, boolean click) {
-		if (source == null || !source.requiresAttribution()) {
-			return false;
-		}
-
-		if (attrTextBounds != null && attrTextBounds.contains(p)) {
-			String attributionURL = source.getAttributionLinkURL();
-			if (attributionURL != null) {
-				if (click) {
-					FeatureAdapter.openLink(attributionURL);
-				}
-				return true;
-			}
-		} else if (attrImageBounds != null && attrImageBounds.contains(p)) {
-			String attributionImageURL = source.getAttributionImageURL();
-			if (attributionImageURL != null) {
-				if (click) {
-					FeatureAdapter.openLink(source.getAttributionImageURL());
-				}
-				return true;
-			}
-		} else if (attrToUBounds != null && attrToUBounds.contains(p)) {
-			String termsOfUseURL = source.getTermsOfUseURL();
-			if (termsOfUseURL != null) {
-				if (click) {
-					FeatureAdapter.openLink(termsOfUseURL);
-				}
-				return true;
-			}
-		}
-		return false;
+	public boolean handleAttribution(Point p, boolean click) {if (source == null || !source.requiresAttribution()) {
+	    return false;
 	}
 
+	// Determine the target URL based on the bounds
+	String targetUrl = null;
+
+	if (attrTextBounds != null && attrTextBounds.contains(p)) {
+	    targetUrl = source.getAttributionLinkURL();
+	} else if (attrImageBounds != null && attrImageBounds.contains(p)) {
+	    targetUrl = source.getAttributionImageURL();
+	} else if (attrToUBounds != null && attrToUBounds.contains(p)) {
+	    targetUrl = source.getTermsOfUseURL();
+	}
+
+	// If a URL was found, perform the action and report success.
+	if (targetUrl != null) {
+	    if (click) {
+	        FeatureAdapter.openLink(targetUrl);
+	    }
+	    return true;
+	}
+
+	return false;
+}
+
 	public boolean handleAttributionCursor(Point p) {
-		if (attrTextBounds != null && attrTextBounds.contains(p)) {
-			return true;
-		} else if (attrImageBounds != null && attrImageBounds.contains(p)) {
-			return true;
-		} else if (attrToUBounds != null && attrToUBounds.contains(p)) {
-			return true;
-		}
-		return false;
+		return Stream.of(attrTextBounds, attrImageBounds, attrToUBounds)
+	             .anyMatch(bounds -> bounds != null && bounds.contains(p));
 	}
 
 	public void initialize(Attributed source) {
